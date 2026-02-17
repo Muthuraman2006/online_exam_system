@@ -10,4 +10,5 @@ python-jose[cryptography]==3.3.0
 bcrypt==4.1.2
 python-multipart==0.0.6
 alembic==1.13.1
+
 greenlet==3.0.3
