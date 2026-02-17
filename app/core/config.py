@@ -18,9 +18,10 @@ class Settings(BaseSettings):
     
     @property
     def cors_origins_list(self) -> list[str]:
-        """Parse CORS_ORIGINS into a list. Supports comma-separated env var."""
+        """Parse CORS_ORIGINS into a list. Supports comma-separated env var.
+        Falls back to ["*"] when DEBUG is True and no origins are set."""
         if not self.CORS_ORIGINS:
-            return []
+            return ["*"] if self.DEBUG else []
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
     
     # Exam settings

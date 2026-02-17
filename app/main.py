@@ -163,8 +163,8 @@ app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
 
 # Health check
 @app.get("/health")
-async def health_check():
-    return {"status": "healthy", "version": "1.0.0"}
+async def health():
+    return {"status": "ok"}
 
 
 # Serve HTML pages
