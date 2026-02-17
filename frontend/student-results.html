@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Results | ExamPro Student</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .results-grid { display: grid; gap: 16px; }
+    .result-card { background: var(--glass-bg-solid); border: 1px solid var(--glass-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); padding: 24px; }
+    .result-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .result-title { font-size: 18px; font-weight: 600; color: var(--white); }
+    .result-date { font-size: 13px; color: var(--gray-400); }
+    .result-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 16px; margin-bottom: 16px; }
+    .result-stat { text-align: center; padding: 16px; background: rgba(79,70,229,0.04); border: 1px solid rgba(79,70,229,0.08); border-radius: var(--radius); }
+    .result-stat-value { font-size: 24px; font-weight: 700; color: var(--white); }
+    .result-stat-label { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+    .result-score { display: flex; align-items: center; gap: 16px; padding: 20px; border-radius: var(--radius); margin-bottom: 16px; }
+    .result-score.pass { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); }
+    .result-score.fail { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+    .result-score-value { font-size: 32px; font-weight: 700; }
+    .result-score.pass .result-score-value { color: var(--success); }
+    .result-score.fail .result-score-value { color: var(--danger); }
+    .result-score-label { font-size: 14px; color: var(--gray-300); }
+    .badge-pass { background: rgba(16,185,129,0.15); color: var(--success); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-fail { background: rgba(239,68,68,0.15); color: var(--danger); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid rgba(239,68,68,0.3); }
+    .progress-bar { height: 8px; background: rgba(79,70,229,0.08); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .progress-fill.pass { background: linear-gradient(90deg, var(--success), #34d399); }
+    .progress-fill.fail { background: linear-gradient(90deg, var(--danger), #f87171); }
+    .difficulty-breakdown { margin-top: 16px; }
+    .diff-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-color); }
+    .diff-row:last-child { border-bottom: none; }
+    .diff-label { width: 80px; font-size: 13px; font-weight: 500; color: var(--gray-300); }
+    .diff-bar { flex: 1; height: 6px; background: rgba(79,70,229,0.08); border-radius: 3px; }
+    .diff-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 3px; }
+    .diff-score { width: 60px; text-align: right; font-size: 13px; color: var(--gray-400); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="page-header">
+        <h1 class="page-title">My Results</h1>
+        <p class="page-subtitle">View your exam performance</p>
+      </div>
+      
+      <div class="results-grid" id="results-container">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </main>
+  </div>
+  
+  <script src="/js/app.js"></script>
+  <script>
+    if (!initPage('results', ['student'])) throw new Error('Auth required');
+    
+    async function loadResults() {
+      const container = document.getElementById('results-container');
+      
+      try {
+        const results = await http.get('/results');
+        
+        if (!results || results.length === 0) {
+          container.innerHTML = `
+            <div class="empty">
+              <div class="empty-title">No results yet</div>
+              <p class="text-sm text-gray">Complete exams to see your results here</p>
+            </div>
+          `;
+          return;
+        }
+        
+        container.innerHTML = results.map(r => {
+          const pct = Math.round(r.percentage);
+          const passed = r.is_passed;
+          const diffScores = r.difficulty_wise_score || {};
+          
+          return `
+            <div class="result-card">
+              <div class="result-header">
+                <div>
+                  <div class="result-title">${r.exam_title || 'Exam'}</div>
+                  <div class="result-date">${UI.formatDateTime(r.evaluated_at)}</div>
+                </div>
+                <span class="${passed ? 'badge-pass' : 'badge-fail'}">${passed ? 'PASSED' : 'FAILED'}</span>
+              </div>
+              
+              <div class="result-score ${passed ? 'pass' : 'fail'}">
+                <div>
+                  <div class="result-score-value">${r.marks_obtained}/${r.total_marks}</div>
+                  <div class="result-score-label">Marks Obtained</div>
+                </div>
+                <div style="flex:1;">
+                  <div class="progress-bar">
+                    <div class="progress-fill ${passed ? 'pass' : 'fail'}" style="width:${pct}%"></div>
+                  </div>
+                  <div class="text-sm mt-1" style="text-align:center;color:var(--gray-400);">${pct}%</div>
+                </div>
+                ${r.rank ? `<div style="text-align:center;"><div class="result-score-value">#${r.rank}</div><div class="result-score-label">Rank</div></div>` : ''}
+              </div>
+              
+              <div class="result-stats">
+                <div class="result-stat">
+                  <div class="result-stat-value">${r.total_questions}</div>
+                  <div class="result-stat-label">Total Questions</div>
+                </div>
+                <div class="result-stat">
+                  <div class="result-stat-value">${r.attempted}</div>
+                  <div class="result-stat-label">Attempted</div>
+                </div>
+                <div class="result-stat">
+                  <div class="result-stat-value" style="color:var(--success);">${r.correct}</div>
+                  <div class="result-stat-label">Correct</div>
+                </div>
+                <div class="result-stat">
+                  <div class="result-stat-value" style="color:var(--danger);">${r.wrong}</div>
+                  <div class="result-stat-label">Wrong</div>
+                </div>
+              </div>
+              
+              ${Object.keys(diffScores).length > 0 ? `
+                <div class="difficulty-breakdown">
+                  <h4 class="text-sm text-gray mb-2">Performance by Difficulty</h4>
+                  ${['EASY', 'MEDIUM', 'HARD'].map(diff => {
+                    const d = diffScores[diff] || {correct: 0, total: 0};
+                    const pct = d.total > 0 ? Math.round((d.correct / d.total) * 100) : 0;
+                    return `
+                      <div class="diff-row">
+                        <span class="diff-label">${diff}</span>
+                        <div class="diff-bar"><div class="diff-fill" style="width:${pct}%"></div></div>
+                        <span class="diff-score">${d.correct}/${d.total}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('');
+        
+      } catch (err) {
+        console.error(err);
+        container.innerHTML = `<div class="empty"><div class="empty-title" style="color:var(--danger);">Failed to load results</div></div>`;
+      }
+    }
+    
+    loadResults();
+  </script>
+</body>
+</html>

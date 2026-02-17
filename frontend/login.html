@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ExamPro | Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Animated mesh gradient */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(79,70,229,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(124,58,237,0.04) 0%, transparent 60%);
+      z-index: 0;
+    }
+
+    /* Scan lines */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(99,102,241,0.008) 2px, rgba(99,102,241,0.008) 4px);
+      z-index: 0;
+      pointer-events: none;
+      display: none;
+    }
+
+    canvas#bg-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .login-container {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 24px;
+      padding: 40px 36px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.08), 0 0 40px rgba(79,70,229,0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Top neon line */
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 30px;
+      right: 30px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #4f46e5, transparent);
+      opacity: 0.3;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .brand h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 32px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: 3px;
+      text-shadow: none;
+      filter: drop-shadow(0 0 20px rgba(79,70,229,0.3));
+    }
+
+    .brand p {
+      color: #64748b;
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: rgba(0,0,0,0.03);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .tab.active {
+      background: linear-gradient(135deg, rgba(79,70,229,0.12), rgba(124,58,237,0.12));
+      color: #4f46e5;
+      box-shadow: 0 0 20px rgba(79,70,229,0.08);
+    }
+
+    /* Forms */
+    .form { display: none; }
+    .form.active { display: block; }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 14px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #1e293b;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79,70,229,0.12), 0 0 20px rgba(79,70,229,0.06);
+    }
+
+    .form-input::placeholder { color: #94a3b8; }
+
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff;
+      box-shadow: 0 4px 25px rgba(79,70,229,0.3);
+      transition: transform 0.15s, box-shadow 0.15s;
+      font-family: 'Inter', sans-serif;
+      letter-spacing: 0.5px;
+      margin-top: 8px;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 35px rgba(79,70,229,0.45);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .error-msg {
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 12px;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .footer-text {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    /* ============ Login Theme Toggle ============ */
+    .login-theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 100;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.1);
+      background: rgba(255,255,255,0.9);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.25s, border-color 0.25s;
+    }
+    .login-theme-toggle:hover {
+      border-color: #4f46e5;
+      background: rgba(79,70,229,0.08);
+    }
+
+    /* ============ Dark Mode ============ */
+    body.dark {
+      background: #0f172a;
+      color: #d1d9f0;
+    }
+    body.dark::before {
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(167,139,250,0.1) 0%, transparent 60%);
+    }
+    body.dark::after { display: block; }
+    body.dark .login-card {
+      background: rgba(30, 41, 59, 0.92);
+      border-color: rgba(99, 102, 241, 0.1);
+      box-shadow: 0 25px 80px rgba(0,0,0,0.4), 0 0 40px rgba(99,102,241,0.06);
+    }
+    body.dark .login-card::before {
+      background: linear-gradient(90deg, transparent, #6366f1, transparent);
+      opacity: 0.5;
+    }
+    body.dark .brand p { color: #68778d; }
+    body.dark .tabs { background: rgba(255,255,255,0.03); }
+    body.dark .tab { color: #68778d; }
+    body.dark .tab.active {
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(167,139,250,0.15));
+      color: #6366f1;
+      box-shadow: 0 0 20px rgba(99,102,241,0.1);
+    }
+    body.dark .form-label { color: #a0aec0; }
+    body.dark .form-input {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(255,255,255,0.08);
+      color: #d1d9f0;
+    }
+    body.dark .form-input::placeholder { color: #4a5568; }
+    body.dark .form-input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12), 0 0 20px rgba(99,102,241,0.08);
+    }
+    body.dark .btn-submit {
+      background: linear-gradient(135deg, #6366f1, #a78bfa);
+      color: #0f172a;
+      box-shadow: 0 4px 25px rgba(99,102,241,0.3);
+    }
+    body.dark .btn-submit:hover {
+      box-shadow: 0 6px 35px rgba(99,102,241,0.45);
+    }
+    body.dark .footer-text { color: #4a5568; }
+    body.dark .login-theme-toggle {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(99,102,241,0.1);
+    }
+    body.dark .login-theme-toggle:hover {
+      border-color: #6366f1;
+      background: rgba(99,102,241,0.1);
+    }
+
+    /* ============ Responsive ============ */
+    @media (max-width: 768px) {
+      body { padding: 16px; overflow: auto; }
+      .login-container { max-width: 100%; padding: 12px; }
+      .login-card { padding: 28px 24px; border-radius: 20px; }
+      .brand h1 { font-size: 26px; letter-spacing: 2px; }
+      .brand p { font-size: 13px; }
+      .tabs { margin-bottom: 24px; }
+      .tab { padding: 9px 8px; font-size: 13px; }
+      .form-input { padding: 11px 14px; font-size: 14px; }
+      .btn-submit { padding: 13px; font-size: 14px; }
+      .login-theme-toggle { top: 12px; right: 12px; width: 38px; height: 38px; font-size: 18px; }
+    }
+
+    @media (max-width: 480px) {
+      body { align-items: flex-start; padding-top: 40px; }
+      .login-container { padding: 8px; }
+      .login-card { padding: 24px 18px; border-radius: 16px; }
+      .brand { margin-bottom: 24px; }
+      .brand h1 { font-size: 22px; }
+      .form-group { margin-bottom: 16px; }
+      .form-input { padding: 10px 12px; border-radius: 10px; }
+      .btn-submit { padding: 12px; border-radius: 10px; }
+      .footer-text { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <button class="login-theme-toggle" id="loginThemeToggle" title="Toggle theme">☀️</button>
+  
+  <div class="login-container">
+    <div class="login-card">
+      <div class="brand">
+        <h1>EXAMPRO</h1>
+        <p>Next-Gen Examination Platform</p>
+      </div>
+      
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('login')">Sign In</button>
+        <button class="tab" onclick="switchTab('register')">Register</button>
+      </div>
+      
+      <!-- Login Form -->
+      <form class="form active" id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="login-email" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-input" id="login-password" placeholder="Enter password" required>
+        </div>
+        <div class="error-msg" id="login-error"></div>
+        <button type="submit" class="btn-submit" id="login-btn">Sign In</button>
+      </form>
+      
+      <!-- Register Form -->
+      <form class="form" id="register-form" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" id="reg-name" placeholder="Your full name" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="reg-email" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-input" id="reg-password" placeholder="Min 8 characters" required minlength="8">
+        </div>
+        <div class="error-msg" id="register-error"></div>
+        <button type="submit" class="btn-submit" id="reg-btn">Create Account</button>
+      </form>
+      
+      <div class="footer-text">Secure & encrypted examination system</div>
+    </div>
+  </div>
+  
+  <script>
+    // ============ Theme Toggle ============
+    (function() {
+      const saved = localStorage.getItem('exampro-theme');
+      if (saved === 'dark') document.body.classList.add('dark');
+      const btn = document.getElementById('loginThemeToggle');
+      btn.textContent = document.body.classList.contains('dark') ? '🌙' : '☀️';
+      btn.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        const isDark = document.body.classList.contains('dark');
+        localStorage.setItem('exampro-theme', isDark ? 'dark' : 'light');
+        btn.textContent = isDark ? '🌙' : '☀️';
+      });
+    })();
+
+    // Check if already logged in
+    const token = localStorage.getItem('exampro-token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (Date.now() < payload.exp * 1000) {
+          const user = JSON.parse(localStorage.getItem('exampro-user') || '{}');
+          window.location.href = user.role === 'ADMIN' ? '/admin-dashboard.html' : '/student-dashboard.html';
+        }
+      } catch(e) {}
+    }
+    
+    // Particle background DISABLED for performance
+    // Static CSS gradient provides the visual effect with zero CPU usage
+    const canvas = document.getElementById('bg-canvas');
+    canvas.style.display = 'none';
+    
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+      });
+      document.getElementById('login-form').classList.toggle('active', tab === 'login');
+      document.getElementById('register-form').classList.toggle('active', tab === 'register');
+      document.getElementById('login-error').textContent = '';
+      document.getElementById('register-error').textContent = '';
+    }
+    
+    // Login
+    async function handleLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('login-btn');
+      const errorEl = document.getElementById('login-error');
+      errorEl.textContent = '';
+      errorEl.style.color = '';  // Reset green color from registration success
+      btn.disabled = true;
+      btn.textContent = 'Signing in...';
+      
+      try {
+        const body = new URLSearchParams({
+          username: document.getElementById('login-email').value,
+          password: document.getElementById('login-password').value
+        });
+        
+        const res = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          throw new Error(data.detail || 'Login failed');
+        }
+        
+        localStorage.setItem('exampro-token', data.access_token);
+        
+        // Use user from login response (already includes full user object)
+        const user = data.user;
+        localStorage.setItem('exampro-user', JSON.stringify(user));
+        
+        window.location.href = user.role === 'ADMIN' ? '/admin-dashboard.html' : '/student-dashboard.html';
+      } catch (err) {
+        errorEl.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+      }
+    }
+    
+    // Register
+    async function handleRegister(e) {
+      e.preventDefault();
+      const btn = document.getElementById('reg-btn');
+      const errorEl = document.getElementById('register-error');
+      errorEl.textContent = '';
+      btn.disabled = true;
+      btn.textContent = 'Creating account...';
+      
+      try {
+        const res = await fetch('/api/v1/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            full_name: document.getElementById('reg-name').value,
+            email: document.getElementById('reg-email').value,
+            password: document.getElementById('reg-password').value,
+            role: 'STUDENT'
+          })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          throw new Error(data.detail || 'Registration failed');
+        }
+        
+        // Auto-login after register
+        switchTab('login');
+        document.getElementById('login-email').value = document.getElementById('reg-email').value;
+        const loginErr = document.getElementById('login-error');
+        loginErr.textContent = '';
+        loginErr.style.color = '#16a34a';
+        loginErr.textContent = 'Account created! Please sign in.';
+      } catch (err) {
+        errorEl.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+      }
+    }
+  </script>
+</body>
+</html>

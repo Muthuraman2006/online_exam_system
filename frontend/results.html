@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Results | ExamPro Admin</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .filters { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filters select { min-width: 200px; }
+    .score { font-weight: 700; }
+    .score.pass { color: var(--success); }
+    .score.fail { color: var(--danger); }
+    .progress-bar { height: 6px; background: rgba(79,70,229,0.08); border-radius: 3px; overflow: hidden; width: 100px; }
+    .progress-fill { height: 100%; border-radius: 3px; }
+    .progress-fill.pass { background: var(--gradient-success); }
+    .progress-fill.fail { background: var(--gradient-danger); }
+    .results-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    @media (max-width: 768px) {
+      .results-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .filters select { min-width: 100%; }
+    }
+    @media (max-width: 480px) {
+      .results-stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="page-header">
+        <h1 class="page-title">Results</h1>
+        <p class="page-subtitle">View exam results and performance</p>
+      </div>
+      
+      <div class="card">
+        <div class="filters">
+          <select class="form-select" id="exam-filter" onchange="loadResults()">
+            <option value="">Select an exam</option>
+          </select>
+        </div>
+        
+        <div id="results-container">
+          <div class="empty">
+            <div class="empty-title">Select an exam to view results</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <script src="/js/app.js"></script>
+  <script>
+    if (!initPage('results', ['admin'])) throw new Error('Auth required');
+    
+    let exams = [];
+    
+    async function init() {
+      try {
+        exams = await http.get('/exams');
+        const select = document.getElementById('exam-filter');
+        select.innerHTML = '<option value="">Select an exam</option>' + 
+          exams.map(e => `<option value="${e.id}">${e.title}</option>`).join('');
+      } catch (err) {
+        UI.toast('Failed to load exams', 'error');
+      }
+    }
+    
+    async function loadResults() {
+      const examId = document.getElementById('exam-filter').value;
+      const container = document.getElementById('results-container');
+      
+      if (!examId) {
+        container.innerHTML = '<div class="empty"><div class="empty-title">Select an exam to view results</div></div>';
+        return;
+      }
+      
+      container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      
+      try {
+        const results = await http.get(`/exams/${examId}/results`, false);
+        const exam = exams.find(e => e.id == examId);
+        
+        if (!results || results.length === 0) {
+          container.innerHTML = '<div class="empty"><div class="empty-title">No results yet</div><p class="text-sm text-gray">Students haven\'t completed this exam</p></div>';
+          return;
+        }
+        
+        const passingMarks = exam?.passing_marks || 0;
+        const totalMarks = exam?.total_marks || 100;
+        
+        container.innerHTML = `
+          <div class="stats mb-4 results-stats-grid">
+            <div class="stat">
+              <div class="stat-label">Total Attempts</div>
+              <div class="stat-value">${results.length}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Passed</div>
+              <div class="stat-value" style="color:var(--success);">${results.filter(r => r.marks_obtained >= passingMarks).length}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Failed</div>
+              <div class="stat-value" style="color:var(--danger);">${results.filter(r => r.marks_obtained < passingMarks).length}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Average Score</div>
+              <div class="stat-value">${(results.reduce((sum, r) => sum + r.marks_obtained, 0) / results.length).toFixed(1)}</div>
+            </div>
+          </div>
+          
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Score</th>
+                  <th>Progress</th>
+                  <th>Status</th>
+                  <th>Completed</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${results.map(r => {
+                  const pct = Math.round((r.marks_obtained / totalMarks) * 100);
+                  const passed = r.marks_obtained >= passingMarks;
+                  return `
+                    <tr>
+                      <td>
+                        <strong>${r.student_name || 'Unknown'}</strong>
+                        <div class="text-sm text-gray">${r.student_email || ''}</div>
+                      </td>
+                      <td>
+                        <span class="score ${passed ? 'pass' : 'fail'}">${r.marks_obtained}/${totalMarks}</span>
+                      </td>
+                      <td>
+                        <div class="progress-bar">
+                          <div class="progress-fill ${passed ? 'pass' : 'fail'}" style="width:${pct}%"></div>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="badge ${passed ? 'badge-success' : 'badge-danger'}">${passed ? 'Passed' : 'Failed'}</span>
+                      </td>
+                      <td class="text-sm text-gray">${UI.formatDateTime(r.evaluated_at)}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (err) {
+        container.innerHTML = '<div class="empty"><div class="empty-title">Failed to load results</div></div>';
+      }
+    }
+    
+    init();
+  </script>
+</body>
+</html>

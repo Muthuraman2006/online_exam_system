@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Students | ExamPro Admin</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .search-bar { display: flex; gap: 12px; margin-bottom: 16px; }
+    .search-bar input { flex: 1; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--gradient-primary); color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; box-shadow: 0 2px 8px rgba(79,70,229,0.2); }
+    .student-info { display: flex; align-items: center; gap: 12px; }
+    .student-name { font-weight: 600; color: var(--gray-100); }
+    .student-email { font-size: 12px; color: var(--gray-400); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="page-header flex items-center justify-between">
+        <div>
+          <h1 class="page-title">Students</h1>
+          <p class="page-subtitle">Manage student accounts</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal()">Add Student</button>
+      </div>
+      
+      <div class="card">
+        <div class="search-bar">
+          <input type="text" class="form-input" id="search" placeholder="Search students..." oninput="filterStudents()">
+        </div>
+        
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th style="width:100px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="students-body">
+              <tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Add Student</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="student-form">
+        <div class="modal-body">
+          <input type="hidden" id="student-id">
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input type="text" class="form-input" id="student-name" required placeholder="Enter full name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email *</label>
+            <input type="email" class="form-input" id="student-email" required placeholder="Enter email address">
+          </div>
+          <div class="form-group" id="password-group">
+            <label class="form-label">Password *</label>
+            <input type="password" class="form-input" id="student-password" minlength="8" placeholder="Minimum 6 characters">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <script src="/js/app.js"></script>
+  <script>
+    if (!initPage('students', ['admin'])) throw new Error('Auth required');
+    
+    let students = [];
+    
+    async function loadStudents() {
+      try {
+        students = await http.get('/auth/users?role=STUDENT');
+        renderStudents();
+      } catch (err) {
+        UI.toast('Failed to load students', 'error');
+      }
+    }
+    
+    function renderStudents() {
+      const search = document.getElementById('search').value.toLowerCase();
+      let filtered = students;
+      
+      if (search) {
+        filtered = filtered.filter(s => 
+          s.full_name?.toLowerCase().includes(search) || 
+          s.email?.toLowerCase().includes(search)
+        );
+      }
+      
+      const tbody = document.getElementById('students-body');
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4"><div class="empty"><div class="empty-title">No students found</div></div></td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = filtered.map(s => `
+        <tr>
+          <td>
+            <div class="student-info">
+              <div class="avatar">${(s.full_name || s.email || '?')[0].toUpperCase()}</div>
+              <div>
+                <div class="student-name">${s.full_name || 'Unnamed'}</div>
+                <div class="student-email">${s.email}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-gray'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
+          <td class="text-sm text-gray">${UI.formatDate(s.created_at)}</td>
+          <td>
+            <div class="actions">
+              <button onclick="editStudent(${s.id})" title="Edit">${Icons.edit}</button>
+              <button onclick="toggleStatus(${s.id}, ${s.is_active})" title="${s.is_active ? 'Deactivate' : 'Activate'}">${s.is_active ? Icons.close : Icons.check}</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+    
+    function filterStudents() { renderStudents(); }
+    
+    function openModal(student = null) {
+      document.getElementById('modal-title').textContent = student ? 'Edit Student' : 'Add Student';
+      document.getElementById('student-form').reset();
+      document.getElementById('student-id').value = student?.id || '';
+      document.getElementById('password-group').style.display = student ? 'none' : 'block';
+      
+      if (student) {
+        document.getElementById('student-name').value = student.full_name || '';
+        document.getElementById('student-email').value = student.email;
+      }
+      
+      document.getElementById('modal').classList.add('active');
+    }
+    
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+    
+    function editStudent(id) {
+      const student = students.find(s => s.id === id);
+      if (student) openModal(student);
+    }
+    
+    async function toggleStatus(id, currentActive) {
+      const action = currentActive ? 'deactivate' : 'activate';
+      if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} this student?`)) return;
+      
+      try {
+        await http.patch(`/auth/users/${id}`, { is_active: !currentActive });
+        UI.toast(`Student ${action}d`);
+        http.clearCache();
+        loadStudents();
+      } catch (err) {
+        UI.toast(err.message, 'error');
+      }
+    }
+    
+    document.getElementById('student-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('student-id').value;
+      
+      const data = {
+        full_name: document.getElementById('student-name').value.trim(),
+        email: document.getElementById('student-email').value.trim()
+      };
+      
+      if (!id) {
+        data.password = document.getElementById('student-password').value;
+        data.role = 'STUDENT';
+        if (!data.password || data.password.length < 8) {
+          UI.toast('Password must be at least 8 characters', 'error');
+          return;
+        }
+      }
+      
+      try {
+        if (id) {
+          await http.patch(`/auth/users/${id}`, data);
+          UI.toast('Student updated');
+        } else {
+          await http.post('/auth/register', data);
+          UI.toast('Student created');
+        }
+        closeModal();
+        http.clearCache();
+        loadStudents();
+      } catch (err) {
+        UI.toast(err.message, 'error');
+      }
+    });
+    
+    loadStudents();
+  </script>
+</body>
+</html>

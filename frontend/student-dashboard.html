@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | ExamPro Student</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    /* Dark theme overrides - base styles come from app.css */
+    .exam-card { background: var(--glass-bg-solid); border: 1px solid var(--glass-border); }
+    .exam-card:hover { box-shadow: var(--shadow-card), var(--shadow-neon); border-color: var(--glass-border-hover); }
+    .exam-title { color: var(--white); }
+    .exam-meta { color: var(--gray-400); }
+    .exam-time { background: rgba(79,70,229,0.04); border: 1px solid rgba(79,70,229,0.08); color: var(--muted-text); }
+    .exam-time strong { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main" id="main">
+      <div class="page-header">
+        <h1 class="page-title">My Exams</h1>
+        <p class="page-subtitle" id="welcome">Welcome back!</p>
+      </div>
+      
+      <div class="stats" id="stats">
+        <div class="stat">
+          <div class="stat-icon primary"></div>
+          <div class="stat-label">Available Exams</div>
+          <div class="stat-value" id="stat-available">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon success"></div>
+          <div class="stat-label">Completed</div>
+          <div class="stat-value" id="stat-completed">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon warning"></div>
+          <div class="stat-label">Pending</div>
+          <div class="stat-value" id="stat-pending">-</div>
+        </div>
+      </div>
+      
+      <h2 class="mb-4">Available Exams</h2>
+      <div class="exam-cards" id="exams-list">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </main>
+  </div>
+  
+  <script src="/js/app.js"></script>
+  <script>
+    if (!initPage('dashboard', ['student'])) throw new Error('Auth required');
+    
+    const user = Auth.getUser();
+    document.getElementById('welcome').textContent = `Welcome back, ${user?.full_name || 'Student'}!`;
+    
+    // Update stat icons
+    document.querySelectorAll('.stat-icon').forEach((el, i) => {
+      const icons = [Icons.exams, Icons.check, Icons.clock];
+      el.innerHTML = icons[i] || '';
+    });
+    
+    async function loadExams() {
+      try {
+        // Use the dedicated student/available endpoint — returns only
+        // ACTIVE exams within the current time window (no assignment needed)
+        const exams = await http.get('/exams/student/available');
+        
+        // Also fetch /my-exams for completed + pending counts
+        let assignments = [];
+        try { assignments = await http.get('/exams/my-exams'); } catch(e) {}
+        
+        const completed = assignments.filter(a => a.is_completed);
+        const pending = assignments.filter(a => {
+          return !a.is_completed && a.exam && a.exam.status === 'SCHEDULED' && new Date(a.exam.start_time) > new Date();
+        });
+        
+        // Debug log
+        console.log(`[EXAM VISIBILITY] available=${exams.length} completed=${completed.length} pending=${pending.length}`);
+        exams.forEach(e => {
+          console.log(`  exam=${e.id} "${e.title}" status=${e.status} start=${e.start_time} end=${e.end_time}`);
+        });
+        
+        document.getElementById('stat-available').textContent = exams.length;
+        document.getElementById('stat-completed').textContent = completed.length;
+        document.getElementById('stat-pending').textContent = pending.length;
+        
+        const list = document.getElementById('exams-list');
+        
+        if (exams.length === 0) {
+          let msg = 'No exams available right now.';
+          if (pending.length > 0) {
+            const nextExam = pending.sort((a, b) => new Date(a.exam.start_time) - new Date(b.exam.start_time))[0];
+            if (nextExam) {
+              msg += ` Next exam: ${nextExam.exam.title} starts at ${UI.formatDateTime(nextExam.exam.start_time)}`;
+            }
+          }
+          list.innerHTML = `<div class="empty" style="grid-column:1/-1;"><div class="empty-title">${msg}</div><p class="text-sm text-gray">Check back later for new exams</p></div>`;
+          return;
+        }
+        
+        list.innerHTML = exams.map(e => {
+          return `
+            <div class="exam-card">
+              <div class="exam-title">${e.title}</div>
+              <div class="exam-meta">
+                <span>${Icons.clock} ${UI.formatDuration(e.duration_minutes)}</span>
+                <span>${Icons.questions} ${e.total_questions} Questions</span>
+                <span>📊 ${e.total_marks} Marks</span>
+              </div>
+              <div class="exam-time">
+                <strong>Available:</strong> ${UI.formatTime(e.start_time)} - ${UI.formatTime(e.end_time)}
+              </div>
+              <button class="btn btn-primary" style="width:100%;" onclick="startExam(${e.id})">
+                Start Exam
+              </button>
+            </div>
+          `;
+        }).join('');
+        
+      } catch (err) {
+        console.error(err);
+        UI.toast('Failed to load exams', 'error');
+      }
+    }
+    
+    function startExam(examId) {
+      if (confirm('Are you ready to start this exam? The timer will begin immediately.')) {
+        window.location.href = `/take-exam.html?exam_id=${examId}`;
+      }
+    }
+    
+    loadExams();
+  </script>
+</body>
+</html>

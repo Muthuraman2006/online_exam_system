@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exams | ExamPro Admin</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-btn { padding: 8px 16px; font-size: 13px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: 50px; cursor: pointer; transition: background 0.1s, border-color 0.1s, color 0.1s; color: var(--muted-text); font-family: var(--font); }
+    .filter-btn:hover { border-color: rgba(79,70,229,0.25); color: var(--primary); }
+    .filter-btn.active { background: var(--gradient-primary); color: #ffffff; border-color: transparent; box-shadow: 0 4px 14px rgba(79,70,229,0.2); font-weight: 700; }
+    .search-box { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 50px; flex-shrink: 0; }
+    .search-box input { border: none; outline: none; font-size: 14px; width: 180px; min-width: 120px; background: transparent; color: var(--gray-100); font-family: var(--font); }
+    .search-box input::placeholder { color: var(--gray-500); }
+    .search-box svg { width: 18px; height: 18px; color: var(--gray-500); flex-shrink: 0; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="page-header flex items-center justify-between">
+        <div>
+          <h1 class="page-title">Exams</h1>
+          <p class="page-subtitle">Manage your examinations</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Exam
+        </button>
+      </div>
+      
+      <div class="card">
+        <div class="toolbar">
+          <div class="filters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="DRAFT">Draft</button>
+            <button class="filter-btn" data-filter="SCHEDULED">Scheduled</button>
+            <button class="filter-btn" data-filter="ACTIVE">Active</button>
+            <button class="filter-btn" data-filter="COMPLETED">Completed</button>
+          </div>
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" id="search" placeholder="Search exams..." oninput="filterExams()">
+          </div>
+        </div>
+        
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Exam</th>
+                <th>Questions</th>
+                <th>Duration</th>
+                <th>Schedule</th>
+                <th>Status</th>
+                <th style="width:100px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="exams-body">
+              <tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">Create Exam</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="exam-form">
+        <div class="modal-body">
+          <input type="hidden" id="exam-id">
+          <div class="form-group">
+            <label class="form-label">Title *</label>
+            <input type="text" class="form-input" id="exam-title" required minlength="5" placeholder="e.g., Midterm Examination">
+          </div>
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label class="form-label">Question Bank *</label>
+              <select class="form-select" id="exam-bank" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Total Questions *</label>
+              <input type="number" class="form-input" id="exam-questions" required min="1" placeholder="e.g., 50">
+            </div>
+          </div>
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label class="form-label">Duration (minutes) *</label>
+              <input type="number" class="form-input" id="exam-duration" required min="1" max="360" placeholder="e.g., 60">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Attempts</label>
+              <input type="number" class="form-input" id="exam-attempts" value="1" min="1">
+            </div>
+          </div>
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label class="form-label">Total Marks *</label>
+              <input type="number" class="form-input" id="exam-total" required min="1" placeholder="e.g., 100">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Passing Marks *</label>
+              <input type="number" class="form-input" id="exam-passing" required min="0" placeholder="e.g., 40">
+            </div>
+          </div>
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label class="form-label">Start Time (IST) *</label>
+              <input type="datetime-local" class="form-input" id="exam-start" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">End Time (IST) *</label>
+              <input type="datetime-local" class="form-input" id="exam-end" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="save-btn">Save Exam</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Assign Students Modal -->
+  <div class="modal-overlay" id="assign-modal">
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Assign Students</h3>
+        <button class="modal-close" onclick="closeAssignModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-gray mb-3" id="assign-exam-name"></p>
+        <div class="form-group">
+          <label class="form-label">Select Students</label>
+          <div id="student-checkboxes" style="max-height:280px;overflow-y:auto;border:1px solid var(--glass-border);border-radius:8px;padding:8px;">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button type="button" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;" onclick="toggleAllStudents(true)">Select All</button>
+          <button type="button" class="btn btn-secondary" style="font-size:12px;padding:4px 12px;" onclick="toggleAllStudents(false)">Deselect All</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeAssignModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="assign-btn" onclick="assignStudents()">Assign Selected</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!initPage('exams', ['admin'])) throw new Error('Auth required');
+    
+    let allExams = [];
+    let questionBanks = [];
+    let currentFilter = 'all';
+    
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        renderExams();
+      });
+    });
+    
+    async function loadData() {
+      try {
+        [allExams, questionBanks] = await Promise.all([
+          http.get('/exams'),
+          http.get('/question-banks')
+        ]);
+        
+        // Populate bank dropdown
+        const bankSelect = document.getElementById('exam-bank');
+        bankSelect.innerHTML = '<option value="">Select question bank</option>' + 
+          questionBanks.map(b => `<option value="${b.id}">${b.name} (${b.question_count} Q)</option>`).join('');
+        
+        renderExams();
+      } catch (err) {
+        UI.toast('Failed to load data', 'error');
+      }
+    }
+    
+    function renderExams() {
+      const search = document.getElementById('search').value.toLowerCase();
+      let filtered = allExams;
+      
+      if (currentFilter !== 'all') {
+        filtered = filtered.filter(e => e.status === currentFilter);
+      }
+      if (search) {
+        filtered = filtered.filter(e => e.title.toLowerCase().includes(search));
+      }
+      
+      const tbody = document.getElementById('exams-body');
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty"><div class="empty-title">No exams found</div></div></td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = filtered.map(e => {
+        const bank = questionBanks.find(b => b.id === e.question_bank_id);
+        return `
+          <tr>
+            <td>
+              <strong>${e.title}</strong>
+              <div class="text-sm text-gray">${bank?.name || 'Unknown bank'}</div>
+            </td>
+            <td>${e.total_questions}</td>
+            <td>${UI.formatDuration(e.duration_minutes)}</td>
+            <td class="text-sm">
+              <div>${UI.formatDateTime(e.start_time)}</div>
+              <div style="color:var(--gray-500);font-size:11px;">to ${UI.formatDateTime(e.end_time)}</div>
+            </td>
+            <td><span class="badge badge-${getStatusColor(e.status)}">${e.status}</span></td>
+            <td>
+              <div class="actions">
+                <button onclick="editExam(${e.id})" title="Edit">${Icons.edit}</button>
+                <button onclick="openAssignModal(${e.id})" title="Assign Students">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                </button>
+                <button onclick="deleteExam(${e.id})" title="Delete">${Icons.trash}</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    function filterExams() { renderExams(); }
+    
+    function getStatusColor(status) {
+      const s = (status || '').toLowerCase();
+      if (s === 'active') return 'success';    // Green - currently running
+      if (s === 'scheduled') return 'warning'; // Orange - upcoming
+      if (s === 'completed') return 'primary'; // Cyan - finished
+      if (s === 'draft') return 'info';        // Blue - not published
+      if (s === 'cancelled') return 'danger';  // Red - cancelled
+      return 'gray';
+    }
+    
+    function openModal(exam = null) {
+      document.getElementById('modal-title').textContent = exam ? 'Edit Exam' : 'Create Exam';
+      document.getElementById('exam-form').reset();
+      document.getElementById('exam-id').value = exam?.id || '';
+      
+      if (exam) {
+        document.getElementById('exam-title').value = exam.title;
+        document.getElementById('exam-bank').value = exam.question_bank_id;
+        document.getElementById('exam-questions').value = exam.total_questions;
+        document.getElementById('exam-duration').value = exam.duration_minutes;
+        document.getElementById('exam-attempts').value = exam.max_attempts;
+        document.getElementById('exam-total').value = exam.total_marks;
+        document.getElementById('exam-passing').value = exam.passing_marks;
+        
+        // Format datetime for datetime-local input (YYYY-MM-DDTHH:mm)
+        const formatForInput = (isoString) => {
+          if (!isoString) return '';
+          // Handle both ISO strings and local format strings
+          const dt = new Date(isoString);
+          // Get local date parts
+          const year = dt.getFullYear();
+          const month = String(dt.getMonth() + 1).padStart(2, '0');
+          const day = String(dt.getDate()).padStart(2, '0');
+          const hours = String(dt.getHours()).padStart(2, '0');
+          const mins = String(dt.getMinutes()).padStart(2, '0');
+          return `${year}-${month}-${day}T${hours}:${mins}`;
+        };
+        
+        document.getElementById('exam-start').value = formatForInput(exam.start_time);
+        document.getElementById('exam-end').value = formatForInput(exam.end_time);
+      }
+      
+      document.getElementById('modal').classList.add('active');
+    }
+    
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+    
+    function editExam(id) {
+      const exam = allExams.find(e => e.id === id);
+      if (exam) openModal(exam);
+    }
+    
+    async function deleteExam(id) {
+      const exam = allExams.find(e => e.id === id);
+      if (!exam) return;
+      
+      let msg = `Delete "${exam.title}"?`;
+      if (exam.status === 'ACTIVE' || exam.status === 'COMPLETED') {
+        msg += `\n\n⚠️ This exam is ${exam.status}. All related sessions, results, and assignments will be permanently deleted.`;
+      }
+      if (!confirm(msg)) return;
+      
+      try {
+        await http.delete(`/exams/${id}`);
+        UI.toast('Exam deleted');
+        http.clearCache();
+        loadData();
+      } catch (err) {
+        UI.toast(err.message, 'error');
+      }
+    }
+    
+    document.getElementById('exam-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      
+      UI.clearErrors(form);
+      
+      const id = document.getElementById('exam-id').value;
+      const bankId = parseInt(document.getElementById('exam-bank').value);
+      const bank = questionBanks.find(b => b.id === bankId);
+      const totalQ = parseInt(document.getElementById('exam-questions').value);
+      
+      // Client-side validation with inline errors
+      let hasError = false;
+      
+      if (!bank) {
+        UI.showFieldError('exam-bank', 'Please select a question bank');
+        hasError = true;
+      } else if (totalQ > bank.question_count) {
+        UI.showFieldError('exam-questions', `Only ${bank.question_count} questions available in this bank`);
+        hasError = true;
+      }
+      
+      const startTime = document.getElementById('exam-start').value;
+      const endTime = document.getElementById('exam-end').value;
+      
+      if (startTime && endTime && new Date(startTime) >= new Date(endTime)) {
+        UI.showFieldError('exam-end', 'End time must be after start time');
+        hasError = true;
+      }
+      
+      const totalMarks = parseFloat(document.getElementById('exam-total').value);
+      const passingMarks = parseFloat(document.getElementById('exam-passing').value);
+      
+      if (passingMarks > totalMarks) {
+        UI.showFieldError('exam-passing', 'Passing marks cannot exceed total marks');
+        hasError = true;
+      }
+      
+      if (hasError) return;
+      
+      // Format datetime properly - convert local IST input to UTC ISO for backend
+      // The datetime-local input gives "YYYY-MM-DDTHH:mm" in local time
+      // new Date() interprets it in browser timezone, toISOString() converts to UTC
+      const toUTC = (dtValue) => {
+        if (!dtValue) return null;
+        return new Date(dtValue).toISOString();
+      };
+      
+      const data = {
+        title: document.getElementById('exam-title').value.trim(),
+        question_bank_id: bankId,
+        total_questions: totalQ,
+        duration_minutes: parseInt(document.getElementById('exam-duration').value),
+        max_attempts: parseInt(document.getElementById('exam-attempts').value) || 1,
+        total_marks: totalMarks,
+        passing_marks: passingMarks,
+        start_time: toUTC(startTime),
+        end_time: toUTC(endTime)
+      };
+      
+      UI.btnLoading(submitBtn, true);
+      
+      try {
+        if (id) {
+          await http.patch(`/exams/${id}`, data);
+          UI.toast('Exam updated successfully');
+        } else {
+          await http.post('/exams', data);
+          UI.toast('Exam created successfully');
+        }
+        closeModal();
+        http.clearCache();
+        loadData();
+      } catch (err) {
+        if (err.errors && err.errors.length) {
+          UI.showErrors(form, err.errors);
+        } else {
+          UI.toast(err.message, 'error');
+        }
+      } finally {
+        UI.btnLoading(submitBtn, false);
+      }
+    });
+    
+    // ---- Student Assignment ----
+    let assignExamId = null;
+    let allStudents = [];
+    
+    async function openAssignModal(examId) {
+      assignExamId = examId;
+      const exam = allExams.find(e => e.id === examId);
+      document.getElementById('assign-exam-name').textContent = exam ? `Exam: ${exam.title}` : '';
+      document.getElementById('assign-modal').classList.add('active');
+      
+      const container = document.getElementById('student-checkboxes');
+      container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      
+      try {
+        allStudents = await http.get('/auth/users?role=STUDENT');
+        if (allStudents.length === 0) {
+          container.innerHTML = '<p class="text-sm text-gray" style="padding:12px;">No students found. Add students first.</p>';
+          return;
+        }
+        container.innerHTML = allStudents.map(s => `
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;color:var(--text-color);font-size:14px;" 
+                 onmouseover="this.style.background='rgba(79,70,229,0.04)'" onmouseout="this.style.background='transparent'">
+            <input type="checkbox" value="${s.id}" class="student-cb" style="accent-color:var(--primary);width:16px;height:16px;">
+            ${s.full_name} <span style="color:var(--gray-500);font-size:12px;">(${s.email})</span>
+          </label>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = '<p class="text-sm text-gray" style="padding:12px;">Failed to load students</p>';
+        UI.toast('Failed to load students', 'error');
+      }
+    }
+    
+    function closeAssignModal() {
+      document.getElementById('assign-modal').classList.remove('active');
+      assignExamId = null;
+    }
+    
+    function toggleAllStudents(checked) {
+      document.querySelectorAll('.student-cb').forEach(cb => cb.checked = checked);
+    }
+    
+    async function assignStudents() {
+      if (!assignExamId) return;
+      const selected = [...document.querySelectorAll('.student-cb:checked')].map(cb => parseInt(cb.value));
+      if (selected.length === 0) {
+        UI.toast('Select at least one student', 'error');
+        return;
+      }
+      
+      const btn = document.getElementById('assign-btn');
+      UI.btnLoading(btn, true);
+      
+      try {
+        await http.post(`/exams/${assignExamId}/assign`, { student_ids: selected });
+        UI.toast(`Assigned ${selected.length} student(s) successfully`);
+        closeAssignModal();
+      } catch (err) {
+        UI.toast(err.message || 'Assignment failed', 'error');
+      } finally {
+        UI.btnLoading(btn, false);
+      }
+    }
+    
+    loadData();
+  </script>
+</body>
+</html>
