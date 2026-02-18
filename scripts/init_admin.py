@@ -89,10 +89,10 @@ async def interactive_setup():
     print("All data (questions, exams, students) must be created")
     print("manually through the admin dashboard.\n")
     
-    # Initialize database
-    print("🔧 Initializing database...")
+    # Initialize database (creates tables if they don't exist)
+    print("  Initializing database and creating tables...")
     await init_db()
-    print("✅ Database initialized.\n")
+    print("  Database initialized.\n")
     
     # Check for existing admin
     async with AsyncSessionLocal() as db:

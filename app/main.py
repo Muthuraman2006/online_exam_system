@@ -9,7 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.core.database import init_db
+from app.core.database import init_db, check_db_health
 from app.api.router import api_router
 
 # Configure logging — WARNING level to avoid noisy INFO on every request
@@ -165,6 +165,14 @@ app.mount("/js", StaticFiles(directory=str(FRONTEND_DIR / "js")), name="js")
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/health/db")
+async def health_db():
+    """Check Supabase PostgreSQL connectivity."""
+    result = await check_db_health()
+    status_code = 200 if result["database"] == "connected" else 503
+    return JSONResponse(content=result, status_code=status_code)
 
 
 # Serve HTML pages

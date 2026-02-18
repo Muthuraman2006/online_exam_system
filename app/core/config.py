@@ -6,15 +6,14 @@ from typing import Optional, List
 
 class Settings(BaseSettings):
     # REQUIRED — no defaults, must come from .env or environment
-    DATABASE_URL: str
+    DATABASE_URL: str  # Must be postgresql+asyncpg:// (Supabase Pooler)
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
-    REDIS_URL: str = "redis://localhost:6379/0"
     DEBUG: bool = False
     
     # CORS - comma-separated origins string (parsed via property)
-    CORS_ORIGINS: str = "http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:8000,http://localhost:8000"
+    CORS_ORIGINS: str = "http://127.0.0.1:8000,http://localhost:8000"
     
     @property
     def cors_origins_list(self) -> list[str]:
